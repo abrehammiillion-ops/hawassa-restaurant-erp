@@ -1,14 +1,17 @@
-# Hawassa Restaurant ERP — PWA
+# Hawassa Ethiopian Restaurant — GitHub/Vercel + Mobile PWA
 
-This package is designed to run from the same `index.html` on desktop and mobile.
+This package is built from the supplied `Hawassa_Restaurant_GitHub_Project.zip` application.
 
-## GitHub / Vercel
-1. Upload all files in this folder to the repository root.
-2. Deploy the repository on Vercel.
-3. Open the Vercel HTTPS URL.
+## Web / GitHub / Vercel
+Upload the contents of this folder to the repository root. `index.html` must be in the root.
+No build command is required for the static web app.
 
 ## Phone
-Open the deployed HTTPS URL in Chrome/Edge on Android and use **Add to Home screen / Install app**.
-On iPhone, open the URL in Safari and use **Add to Home Screen**.
+After deployment over HTTPS, open the site on Android Chrome or iPhone Safari.
+- Android: browser menu -> Add to Home screen / Install app.
+- iPhone: Share -> Add to Home Screen.
 
-The app is a PWA, so there is no separate APK required for normal phone installation.
+The PWA manifest, icons, and service worker are included.
+
+## Important
+This package does not change your Supabase application data/configuration. Supabase still needs the correct project URL/key and database policies from your existing application setup.

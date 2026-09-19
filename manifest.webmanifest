@@ -2,7 +2,7 @@
   "name": "Hawassa Ethiopian Restaurant",
   "short_name": "Hawassa Restaurant",
   "description": "Hawassa Ethiopian Restaurant ERP and POS",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

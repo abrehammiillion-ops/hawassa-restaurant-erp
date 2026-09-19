@@ -1,22 +1,14 @@
 {
-  "name": "Hawassa Ethiopian Restaurant ERP",
+  "name": "Hawassa Ethiopian Restaurant",
   "short_name": "Hawassa Restaurant",
-  "description": "Restaurant POS and ERP application for Hawassa Ethiopian Restaurant",
+  "description": "Hawassa Ethiopian Restaurant ERP and POS",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
-  "theme_color": "#078930",
-  "lang": "en",
-  "prefer_related_applications": false,
+  "theme_color": "#8b0000",
   "icons": [
-    {
-      "src": "./icons/icon-32.png",
-      "sizes": "32x32",
-      "type": "image/png",
-      "purpose": "any"
-    },
     {
       "src": "./icons/icon-192.png",
       "sizes": "192x192",

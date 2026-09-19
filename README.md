@@ -1,13 +1,14 @@
-# Hawassa Ethiopian Restaurant
+# Hawassa Restaurant ERP — PWA
 
-Complete GitHub-ready restaurant ERP/POS project.
+This package is designed to run from the same `index.html` on desktop and mobile.
 
-## GitHub
-Keep `index.html` in the repository root. Upload all files, then enable GitHub Pages from:
-Settings → Pages → Deploy from branch → `main` → `/ (root)`.
+## GitHub / Vercel
+1. Upload all files in this folder to the repository root.
+2. Deploy the repository on Vercel.
+3. Open the Vercel HTTPS URL.
 
-## Android
-The `android-app` folder contains a native Android WebView source project. Open it with Android Studio and generate an APK.
+## Phone
+Open the deployed HTTPS URL in Chrome/Edge on Android and use **Add to Home screen / Install app**.
+On iPhone, open the URL in Safari and use **Add to Home Screen**.
 
-## Windows
-The `windows-app` folder contains an Electron desktop source project. Run `npm install`, then `npm run dist` to create the Windows installer.
+The app is a PWA, so there is no separate APK required for normal phone installation.

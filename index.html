@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>hawassarestoranrt | Ethiopian Restaurant</title>
+<title>Hawassa Ethiopian Restaurant ERP</title>
 <style>
 /* ============================================================
    HAWASSA ETHIOPIAN RESTAURANT ERP - COMPLETE STYLES
@@ -2587,34 +2587,6 @@ for delete to anon using (true);
 }
 </style>
 
-
-<!-- hawassarestoranrt PWA + SEO -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0F766E">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="hawassarestoranrt">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
-<meta name="description" content="hawassarestoranrt — Ethiopian restaurant ordering, POS, waiter, kitchen, inventory and restaurant management system in Hawassa, Ethiopia.">
-<meta name="robots" content="index, follow, max-image-preview:large">
-<link rel="canonical" href="https://hawassa-restaurant-erp.vercel.app/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="hawassarestoranrt | Ethiopian Restaurant">
-<meta property="og:description" content="Order Ethiopian food and drinks from hawassarestoranrt in Hawassa, Ethiopia.">
-<meta property="og:url" content="https://hawassa-restaurant-erp.vercel.app/">
-<meta property="og:image" content="https://hawassa-restaurant-erp.vercel.app/icons/icon-512.png">
-<script type="application/ld+json">{
-  "@context":"https://schema.org",
-  "@type":"Restaurant",
-  "name":"hawassarestoranrt",
-  "url":"https://hawassa-restaurant-erp.vercel.app/",
-  "image":"https://hawassa-restaurant-erp.vercel.app/icons/icon-512.png",
-  "servesCuisine":"Ethiopian",
-  "address":{"@type":"PostalAddress","addressLocality":"Hawassa","addressCountry":"ET"}
-}</script>
-
 </head>
 <body>
 
@@ -2831,14 +2803,76 @@ async function _cloudFailedToLocal(err){
   console.warn('Supabase operation unavailable; continuing with the ERP local database.',err);
   _useSupabase=false; _databaseReady=true; _dbInstance=null;
 }
-async function dbPut(storeName,data){ await ensureDatabaseReady(); if(!_useSupabase) return _dbPutLocal(storeName,data); try{return await _dbPutSupabase(storeName,data);}catch(e){await _cloudFailedToLocal(e);return _dbPutLocal(storeName,data);} }
-async function dbGet(storeName,id){ await ensureDatabaseReady(); if(!_useSupabase) return _dbGetLocal(storeName,id); try{return await _dbGetSupabase(storeName,id);}catch(e){await _cloudFailedToLocal(e);return _dbGetLocal(storeName,id);} }
-async function dbGetAll(storeName){ await ensureDatabaseReady(); if(!_useSupabase) return _dbGetAllLocal(storeName); try{return await _dbGetAllSupabase(storeName);}catch(e){await _cloudFailedToLocal(e);return _dbGetAllLocal(storeName);} }
-async function dbGetByIndex(storeName,indexName,value){ await ensureDatabaseReady(); if(!_useSupabase) return _dbGetByIndexLocal(storeName,indexName,value); try{return await _dbGetByIndexSupabase(storeName,indexName,value);}catch(e){await _cloudFailedToLocal(e);return _dbGetByIndexLocal(storeName,indexName,value);} }
-async function dbDelete(storeName,id){ await ensureDatabaseReady(); if(!_useSupabase) return _dbDeleteLocal(storeName,id); try{return await _dbDeleteSupabase(storeName,id);}catch(e){await _cloudFailedToLocal(e);return _dbDeleteLocal(storeName,id);} }
-async function dbClear(storeName){ await ensureDatabaseReady(); if(!_useSupabase) return _dbClearLocal(storeName); try{return await _dbClearSupabase(storeName);}catch(e){await _cloudFailedToLocal(e);return _dbClearLocal(storeName);} }
-async function dbCount(storeName){ await ensureDatabaseReady(); if(!_useSupabase) return _dbCountLocal(storeName); try{return await _dbCountSupabase(storeName);}catch(e){await _cloudFailedToLocal(e);return _dbCountLocal(storeName);} }
-async function dbPutBatch(storeName,items){ await ensureDatabaseReady(); for(const item of (items||[])) await dbPut(storeName,item); }
+/* Performance fix: coalesce duplicate Supabase reads and keep a short cache. */
+const _dbAllCache=new Map(),_dbAllInFlight=new Map(),_DB_ALL_CACHE_TTL=5000;
+const _dbSessionCache=new Map();
+function _dbSessionInvalidate(storeName){
+  _dbSessionCache.delete(String(storeName));
+}
+function _dbSessionClear(){_dbSessionCache.clear();}
+function _dbAllInvalidate(storeName){
+  const k=String(storeName);
+  _dbAllCache.delete(k);
+  _dbAllInFlight.delete(k);
+  _dbSessionInvalidate(k);
+}
+async function dbPut(storeName,data){await ensureDatabaseReady();_dbAllInvalidate(storeName);if(!_useSupabase)return _dbPutLocal(storeName,data);try{return await _dbPutSupabase(storeName,data);}catch(e){await _cloudFailedToLocal(e);return _dbPutLocal(storeName,data);}}
+async function dbGet(storeName,id){await ensureDatabaseReady();if(!_useSupabase)return _dbGetLocal(storeName,id);try{return await _dbGetSupabase(storeName,id);}catch(e){await _cloudFailedToLocal(e);return _dbGetLocal(storeName,id);}}
+async function dbGetAll(storeName){
+  await ensureDatabaseReady();
+  const k=String(storeName);
+  if(!_useSupabase)return _dbGetAllLocal(storeName);
+
+  /* Reuse the complete dataset for this page session. This removes repeated
+     identical REST requests from dashboards, POS, reports, inventory, etc. */
+  if(_dbSessionCache.has(k)) return _dbSessionCache.get(k);
+
+  const c=_dbAllCache.get(k);
+  if(c&&(Date.now()-c.time)<_DB_ALL_CACHE_TTL){
+    _dbSessionCache.set(k,c.data);
+    return c.data;
+  }
+
+  const p=_dbAllInFlight.get(k);
+  if(p)return p;
+
+  const req=(async()=>{
+    try{
+      const data=await _dbGetAllSupabase(storeName);
+      _dbAllCache.set(k,{time:Date.now(),data});
+      _dbSessionCache.set(k,data);
+      return data;
+    }catch(e){
+      await _cloudFailedToLocal(e);
+      const data=_dbGetAllLocal(storeName);
+      _dbSessionCache.set(k,data);
+      return data;
+    }finally{
+      _dbAllInFlight.delete(k);
+    }
+  })();
+  _dbAllInFlight.set(k,req);
+  return req;
+}
+async function dbGetByIndex(storeName,indexName,value){
+  await ensureDatabaseReady();
+  if(!_useSupabase)return _dbGetByIndexLocal(storeName,indexName,value);
+  if(_dbSessionCache.has(String(storeName))){
+    const rows=_dbSessionCache.get(String(storeName))||[];
+    return rows.filter(row=>{
+      if(row==null)return false;
+      if(row[indexName]===value)return true;
+      if(row.data && row.data[indexName]===value)return true;
+      return false;
+    });
+  }
+  try{return await _dbGetByIndexSupabase(storeName,indexName,value);}
+  catch(e){await _cloudFailedToLocal(e);return _dbGetByIndexLocal(storeName,indexName,value);}
+}
+async function dbDelete(storeName,id){await ensureDatabaseReady();_dbAllInvalidate(storeName);if(!_useSupabase)return _dbDeleteLocal(storeName,id);try{return await _dbDeleteSupabase(storeName,id);}catch(e){await _cloudFailedToLocal(e);return _dbDeleteLocal(storeName,id);}}
+async function dbClear(storeName){await ensureDatabaseReady();_dbAllInvalidate(storeName);if(!_useSupabase)return _dbClearLocal(storeName);try{return await _dbClearSupabase(storeName);}catch(e){await _cloudFailedToLocal(e);return _dbClearLocal(storeName);}}
+async function dbCount(storeName){await ensureDatabaseReady();if(!_useSupabase)return _dbCountLocal(storeName);try{return await _dbCountSupabase(storeName);}catch(e){await _cloudFailedToLocal(e);return _dbCountLocal(storeName);}}
+async function dbPutBatch(storeName,items){await ensureDatabaseReady();for(const item of (items||[]))await dbPut(storeName,item);}
 
 async function resetSupabaseDatabase(){
   await ensureDatabaseReady();
@@ -4551,17 +4585,6 @@ function customerPublicPrintWaitingTicket(ticket,type,orderNumber,name){
   const title=type==='dine_in'?'DINE-IN':type==='delivery'?'DELIVERY':'TAKEAWAY';
   const w=window.open('','_blank','width=360,height=520'); if(!w)return;
   w.document.write(`<html><head><title>Waiting Ticket ${esc(ticket)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:18px}.n{font-size:180px;font-weight:1000;line-height:.8;margin:18px 0}.r{font-weight:900;letter-spacing:1px}.s{font-size:11px;color:#666;margin-top:8px}</style></head><body><div class="n">${esc(ticket)}</div><div class="r">${esc(customerPublicRestaurantName)}</div><hr><div class="r">CUSTOMER WAITING TICKET</div><div style="font-size:20px;font-weight:1000;margin:10px">${title}</div><div>Order ${esc(orderNumber)}</div><div style="font-size:11px;margin-top:6px">${esc(name)}</div><div class="s">Thank you. Please wait a few minutes.</div>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js').catch(function (err) {
-        console.warn('PWA service worker registration skipped:', err);
-      });
-    });
-  }
-</script>
-
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),250);
 }
@@ -5059,78 +5082,128 @@ function applyNoteToItem() {
    ============================================================ */
 async function confirmOrder() {
   if (cart.length === 0) return toast('Add items to the order', 'warning');
-  const enteredTicket = await getNextCustomerTicket();
-  cartTicketNumber = enteredTicket;
-  if (cartOrderType === 'delivery' && (!cartDelivery.name || !cartDelivery.phone)) return toast('Customer name and phone required', 'warning');
-  
-  const settings = await dbGet('settings','restaurant-settings') || {};
-  const subtotal = calcCartSubtotal();
-  const discount = calcCartDiscount();
-  const tax = calcCartTax(settings);
-  const service = calcCartService(settings);
-  const deliveryFee = cartDelivery.fee;
-  const total = calcCartTotal(settings);
-  await validateDrinkStockForCart(cart);
-  const orderNumber = await getNextNumber('ORD');
-  
-  const order = {
-    id: uid(), order_number: orderNumber, ticket_number: enteredTicket, type: cartOrderType,
-    table_id: null,
-    customer_id: null,
-    customer_name: cartOrderType==='delivery'?cartDelivery.name:null,
-    customer_phone: cartOrderType==='delivery'?cartDelivery.phone:null,
-    delivery_address: cartOrderType==='delivery'?cartDelivery.address:null,
-    delivery_fee: deliveryFee,
-    status: 'new', subtotal, discount_amount: discount,
-    tax_amount: tax, service_charge: service, total,
-    payment_method: null, payment_status: 'pending',
-    created_by: currentUser.id, created_at: now()
-  };
-  
-  await dbPut('orders', order);
-  
-  for (const ci of cart) {
-    await dbPut('orderItems', {
+  if (cartOrderType === 'delivery' && (!cartDelivery.name || !cartDelivery.phone))
+    return toast('Customer name and phone required', 'warning');
+
+  const cartSnapshot = cart.map(x => ({...x}));
+  const typeSnapshot = cartOrderType;
+  const deliverySnapshot = {...cartDelivery};
+  const tableSnapshot = cartTable;
+
+  try {
+    /* These reads are independent. Do them together so order creation does not
+       wait through several network round trips. */
+    const [enteredTicket, settings, orderNumber] = await Promise.all([
+      getNextCustomerTicket(),
+      dbGet('settings','restaurant-settings'),
+      getNextNumber('ORD')
+    ]);
+
+    const s = settings || {};
+    cartTicketNumber = enteredTicket;
+    const subtotal = calcCartSubtotal();
+    const discount = calcCartDiscount();
+    const tax = calcCartTax(s);
+    const service = calcCartService(s);
+    const deliveryFee = deliverySnapshot.fee;
+    const total = calcCartTotal(s);
+
+    /* Keep stock protection before accepting the order. */
+    await validateDrinkStockForCart(cartSnapshot);
+
+    const order = {
+      id: uid(), order_number: orderNumber, ticket_number: enteredTicket,
+      type: typeSnapshot, table_id: tableSnapshot || null,
+      customer_id: null,
+      customer_name: typeSnapshot==='delivery'?deliverySnapshot.name:null,
+      customer_phone: typeSnapshot==='delivery'?deliverySnapshot.phone:null,
+      delivery_address: typeSnapshot==='delivery'?deliverySnapshot.address:null,
+      delivery_fee: deliveryFee, status: 'new', subtotal,
+      discount_amount: discount, tax_amount: tax, service_charge: service,
+      total, payment_method: null, payment_status: 'pending',
+      created_by: currentUser.id, created_at: now()
+    };
+
+    const itemRows = cartSnapshot.map(ci => ({
       id: uid(), order_id: order.id, menu_item_id: ci.menu_item_id,
       name: ci.name, name_am: ci.name_am, price: ci.price,
       quantity: ci.quantity, notes: ci.notes || '',
       subtotal: ci.price * ci.quantity
+    }));
+
+    /* The customer/waiter should not wait for independent database writes. */
+    const coreWrites = [
+      dbPut('orders', order),
+      ...itemRows.map(row => dbPut('orderItems', row)),
+      dbPut('orderStatusHistory', {
+        id: uid(), order_id: order.id, status: 'new',
+        changed_by: currentUser.id, created_at: now()
+      })
+    ];
+
+    if (typeSnapshot === 'delivery') {
+      coreWrites.push(dbPut('deliveries', {
+        id: uid(), order_id: order.id, customer_name: deliverySnapshot.name,
+        phone: deliverySnapshot.phone, address: deliverySnapshot.address,
+        fee: deliveryFee, status: 'pending', created_at: now()
+      }));
+    }
+
+    await Promise.all(coreWrites);
+
+    /* Order is now safely created. Do not make the user wait for secondary
+       bookkeeping, notifications, audit, or inventory consumption. */
+    toast(`Order ${orderNumber} placed!`, 'success');
+
+    window._lastPlacedOrderId = order.id;
+    window._lastPlacedOrderNum = orderNumber;
+    window._lastOrderCart = cartSnapshot;
+    window._lastOrderType = typeSnapshot;
+    window._lastOrderTicket = enteredTicket;
+    window._lastOrderTable = tableSnapshot;
+    window._lastOrderDelivery = deliverySnapshot;
+    window._lastSettings = s;
+
+    /* Do NOT open a browser popup during Order.
+       Printing remains available from the existing order/print controls. */
+    try {
+      window._pendingOrderPrint = {
+        id: order.id, orderNumber, cart: cartSnapshot, settings: s
+      };
+    } catch(_) {}
+
+    clearCart();
+    cartTicketNumber = '';
+    cartDelivery = { name: '', phone: '', address: '', fee: 0 };
+
+    /* Background work: failure here does not make a successfully-created
+       order look like it failed. Inventory errors are logged for review. */
+    Promise.resolve().then(async () => {
+      try {
+        await Promise.all([
+          addNotification('order', 'New Order', `Order ${orderNumber} placed`),
+          addAuditLog(`Created order ${orderNumber}`, { order_id: order.id, total })
+        ]);
+      } catch(e) {
+        console.warn('Order secondary logging delayed:', e);
+      }
+
+      try {
+        await consumeInventoryForOrder(order.id, cartSnapshot);
+      } catch(e) {
+        console.error('Background inventory consumption failed:', e);
+        try {
+          await addAuditLog(`Inventory consumption needs review for ${orderNumber}`, {
+            order_id: order.id, error: String(e?.message || e)
+          });
+        } catch(_) {}
+      }
     });
+
+  } catch(e) {
+    console.error('Order creation failed:', e);
+    toast(String(e?.message || 'Could not place order. Please try again.'), 'error');
   }
-  
-  await dbPut('orderStatusHistory', { id: uid(), order_id: order.id, status: 'new', changed_by: currentUser.id, created_at: now() });
-  
-  
-  if (cartOrderType === 'delivery') {
-    await dbPut('deliveries', {
-      id: uid(), order_id: order.id, customer_name: cartDelivery.name,
-      phone: cartDelivery.phone, address: cartDelivery.address,
-      fee: deliveryFee, status: 'pending', created_at: now()
-    });
-  }
-  
-  await addNotification('order', 'New Order', `Order ${orderNumber} placed`);
-  await addAuditLog(`Created order ${orderNumber}`, { order_id: order.id, total });
-  await consumeInventoryForOrder(order.id, cart);
-  
-  toast(`Order ${orderNumber} placed!`, 'success');
-  
-  // Save cart data for printing before clearing
-  window._lastPlacedOrderId = order.id;
-  window._lastPlacedOrderNum = orderNumber;
-  window._lastOrderCart = cart.slice();
-  window._lastOrderType = cartOrderType;
-  window._lastOrderTicket = enteredTicket;
-  window._lastOrderTable = cartTable;
-  window._lastOrderDelivery = {...cartDelivery};
-  window._lastSettings = settings;
-  
-  // Show print dialog immediately
-  showPostOrderPrintDialog(order.id, orderNumber, cart.slice(), settings);
-  
-  clearCart();
-  cartTicketNumber = '';
-  cartDelivery = { name: '', phone: '', address: '', fee: 0 };
 }
 
 /* ============================================================
@@ -7582,8 +7655,18 @@ function displayKitchenSelectedFile(){
   const safeName=String(f.name||'Kitchen Display').replace(/[<>&"']/g,'');
   const isVideo=f.type.startsWith('video/');
   w.document.open();
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Hawassa Kitchen TV</title><style>html,body{margin:0;width:100%;height:100%;background:#05070b;color:#fff;font-family:Arial,sans-serif;overflow:hidden}#stage{position:relative;width:100%;height:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#182334,#05070b 70%)}video,img{width:100%;height:100%;object-fit:contain}#bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:10px;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.82));z-index:5}button{border:0;border-radius:10px;padding:12px 18px;font-size:16px;font-weight:800;cursor:pointer;background:#16a34a;color:#fff}button.alt{background:#334155}#name{position:fixed;top:12px;left:12px;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.58);font-size:14px;font-weight:700;z-index:5}</style></head><body><div id="stage"><div id="name">${safeName}</div>${isVideo?`<video id="tvVideo" src="${url}" controls playsinline preload="auto"></video>`:`<img id="tvImage" src="${url}" alt="">`}</div>${isVideo?`<div id="bar"><button onclick="playV()">▶ PLAY</button><button class="alt" onclick="pauseV()">⏸ PAUSE</button><button class="alt" onclick="fullV()">⛶ FULL SCREEN</button></div>`:`<div id="bar"><button onclick="fullPage()">⛶ FULL SCREEN</button></div>`}\x3cscript>const v=document.getElementById('tvVideo');function playV(){if(v)v.play().catch(()=>{});}function pauseV(){if(v)v.pause();}function fullV(){(v||document.documentElement).requestFullscreen?.().catch(()=>{});}function fullPage(){document.documentElement.requestFullscreen?.().catch(()=>{});}window.addEventListener('load',()=>{if(v){v.addEventListener('loadeddata',()=>{}, {once:true});}});<\/script>
-</body></html>`);
+  const tvCss='html,body{margin:0;width:100%;height:100%;background:#05070b;color:#fff;font-family:Arial,sans-serif;overflow:hidden}#stage{position:relative;width:100%;height:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#182334,#05070b 70%)}video,img{width:100%;height:100%;object-fit:contain}#bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:10px;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.82));z-index:5}button{border:0;border-radius:10px;padding:12px 18px;font-size:16px;font-weight:800;cursor:pointer;background:#16a34a;color:#fff}button.alt{background:#334155}#name{position:fixed;top:12px;left:12px;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.58);font-size:14px;font-weight:700;z-index:5}';
+  const mediaSrc=String(url||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  const mediaHtml=isVideo
+    ? '<video id="tvVideo" src="'+mediaSrc+'" controls playsinline preload="auto"></video>'
+    : '<img id="tvImage" src="'+mediaSrc+'" alt="">';
+  const barHtml=isVideo
+    ? '<div id="bar"><button onclick="playV()">▶ PLAY</button><button class="alt" onclick="pauseV()">⏸ PAUSE</button><button class="alt" onclick="fullV()">⛶ FULL SCREEN</button></div>'
+    : '<div id="bar"><button onclick="fullPage()">⛶ FULL SCREEN</button></div>';
+  const tvHtml='<!doctype html><html><head><meta charset="utf-8"><title>Hawassa Kitchen TV</title><style>'+tvCss+'</style></head><body><div id="stage"><div id="name"></div>'+mediaHtml+'</div>'+barHtml+'\x3cscript>const v=document.getElementById("tvVideo");function playV(){if(v)v.play().catch(()=>{});}function pauseV(){if(v)v.pause();}function fullV(){(v||document.documentElement).requestFullscreen?.().catch(()=>{});}function fullPage(){document.documentElement.requestFullscreen?.().catch(()=>{});}window.addEventListener("load",()=>{if(v){v.addEventListener("loadeddata",()=>{}, {once:true});}});<\/script></body></html>';
+  w.document.write(tvHtml);
+  const nameEl=w.document.getElementById('name');
+  if(nameEl) nameEl.textContent=safeName;
   w.document.close();
   w.focus();
   if(isVideo) setTimeout(()=>{try{w.document.getElementById('tvVideo')?.play?.().catch(()=>{});}catch(e){}},250);
@@ -12826,11 +12909,11 @@ function customerPublicCategories(categories) {
 async function loadCustomerImportedCatalog() {
   // The database is the source of truth for the editable customer menu.
   // CUSTOMER_SOURCE_MENU only supplies the original photos/fallbacks.
-  await ensureBuiltInMenuCatalog();
+  const seeded=await ensureBuiltInMenuCatalog();
   const imported=buildImportedCustomerCatalog();
   try {
-    const dbCats=await dbGetAll('menuCategories');
-    const dbItems=await dbGetAll('menuItems');
+    const dbCats=seeded?.categories || await dbGetAll('menuCategories');
+    const dbItems=seeded?.items || await dbGetAll('menuItems');
     if((dbItems||[]).length){
       const sourceByName=new Map((CUSTOMER_SOURCE_MENU||[]).map(x=>[customerImageKey(x.name),x]));
       const activeCats=(dbCats||[]).filter(c=>c.active!==false).map(c=>({...c}));
@@ -12873,28 +12956,25 @@ async function renderCustomerMenuSection() {
   }
 }
 
-async function startCustomerOnlineMode() {
-  const login = document.getElementById('login-page');
-  const app = document.getElementById('app');
-  const root = document.getElementById('customer-public-root');
-  if (login) login.style.display = 'none';
-  if (app) app.style.display = 'none';
-  if (!root) return;
-  root.style.display = 'block';
-  try {
+async function startCustomerOnlineMode(){
+  const login=document.getElementById('login-page'),app=document.getElementById('app'),root=document.getElementById('customer-public-root');
+  if(login)login.style.display='none';
+  if(app)app.style.display='none';
+  if(!root)return;
+  root.style.display='block';
+  try{
     await loadCustomerImportedCatalog();
     await loadCustomerRestaurantName();
-    customerPublicActiveCat = 'ALL';
-    customerPublicMenuGroup = 'FOOD';
+    customerPublicActiveCat='ALL';
+    customerPublicMenuGroup='FOOD';
     renderCustomerPublicPage(root);
-  } catch (e) {
-    console.error('Customer online mode failed:', e);
-    window._customerPublicCategories = window._customerPublicCategories || [];
-    window._customerPublicItems = window._customerPublicItems || [];
+  }catch(e){
+    console.error('Customer online mode failed:',e);
+    window._customerPublicCategories=window._customerPublicCategories||[];
+    window._customerPublicItems=window._customerPublicItems||[];
     renderCustomerPublicPage(root);
   }
 }
-
 const CUSTOMER_DRINK_CATEGORY_IDS = new Set(['cat-juices','cat-coffee','cat-beers','cat-draft','cat-malt','cat-traditional','cat-soft']);
 function isCustomerDrinkCategory(category) {
   if (!category || category === 'ALL') return false;
@@ -14501,49 +14581,101 @@ document.addEventListener('DOMContentLoaded', function(){
     if(window._customerAdditionOrderId && typeof window.customerSubmitAddition==='function'){
       return window.customerSubmitAddition();
     }
-    // Use the direct save path for a NEW online order. This avoids an older
-    // submit wrapper swallowing the click while preserving the existing
-    // customer-addition flow above.
-    if(typeof customerPublicCart==='undefined' || !customerPublicCart.length) return toast('Add an item first','warning');
+    if(typeof customerPublicCart==='undefined' || !customerPublicCart.length)
+      return toast('Add an item first','warning');
+
     const name=String(document.getElementById('customer-public-name')?.value||'').trim()||'Online Customer';
     const phone=String(document.getElementById('customer-public-phone')?.value||'').trim()||'Not provided';
     const type=document.getElementById('customer-public-type')?.value||'takeaway';
     const address=String(document.getElementById('customer-public-address')?.value||'').trim();
     const note=String(document.getElementById('customer-public-note')?.value||'').trim();
     if(type==='delivery'&&!address)return toast('Please enter the delivery address','warning');
+
     const btn=document.getElementById('customer-public-place-order');
     if(btn){btn.disabled=true;btn.textContent='⏳ Sending order…';}
+
     try{
-      const settings=await dbGet('settings','restaurant-settings')||{};
-      const subtotal=customerPublicCart.reduce((s,x)=>s+Number(x.price||0)*Number(x.quantity||0),0);
-      const tax=subtotal*(Number(settings.tax_rate)||15)/100;
-      const service=subtotal*(Number(settings.service_charge_rate)||10)/100;
-      const delivery=type==='delivery'?(Number(settings.delivery_fee)||0):0;
-      const ticket=await getNextCustomerTicket();
-      const orderId=uid(), orderNumber=await getNextNumber('ORD');
-      const order={id:orderId,order_number:orderNumber,ticket_number:String(ticket),type,
+      /* Read settings once. The two independent counters are requested in
+         parallel instead of waiting for one network round-trip after another. */
+      const [settings,ticket,orderNumber]=await Promise.all([
+        dbGet('settings','restaurant-settings'),
+        getNextCustomerTicket(),
+        getNextNumber('ORD')
+      ]);
+      const s=settings||{};
+      const subtotal=customerPublicCart.reduce((sum,x)=>sum+Number(x.price||0)*Number(x.quantity||0),0);
+      const tax=subtotal*(Number(s.tax_rate)||15)/100;
+      const service=subtotal*(Number(s.service_charge_rate)||10)/100;
+      const delivery=type==='delivery'?(Number(s.delivery_fee)||0):0;
+      const orderId=uid();
+
+      const order={
+        id:orderId,order_number:orderNumber,ticket_number:String(ticket),type,
         table_id:null,table_number:null,customer_name:name,customer_phone:phone,
         delivery_address:address,notes:note,status:'pending_waiter',payment_status:'pending',
         payment_method:null,subtotal,tax_amount:tax,service_charge:service,delivery_fee:delivery,
         total:subtotal+tax+service+delivery,source:'online_customer',channel:'customer_online',
         sync_mode:(_useSupabase&&_supabaseClient)?'cloud':'local',created_by:'online_customer',
-        created_by_name:name,waiter_name:'',created_at:now()};
-      await dbPut('orders',order);
-      for(const ci of customerPublicCart){
-        await dbPut('orderItems',{id:uid(),order_id:orderId,menu_item_id:ci.erp_menu_item_id||ci.menu_item_id||null,
-          name:ci.name,name_am:ci.name_am,price:Number(ci.price)||0,quantity:Number(ci.quantity)||0,
-          notes:'',subtotal:(Number(ci.price)||0)*(Number(ci.quantity)||0)});
-      }
-      await dbPut('orderStatusHistory',{id:uid(),order_id:orderId,status:'pending_waiter',changed_by:'online_customer',created_at:now()});
-      try{await addNotification('waiter','New Online Customer Order',`Ticket ${ticket} • ${name} placed ${orderNumber} online and is waiting for a waiter.`);}catch(e){}
-      try{sessionStorage.setItem('hawassa_customer_last_order',JSON.stringify({id:orderId,ticket:String(ticket),order_number:orderNumber}));}catch(e){}
-      customerPublicCart=[]; customerPublicSave(); customerPublicDrawCart();
+        created_by_name:name,waiter_name:'',created_at:now()
+      };
+
+      const itemRows=customerPublicCart.map(ci=>({
+        id:uid(),order_id:orderId,menu_item_id:ci.erp_menu_item_id||ci.menu_item_id||null,
+        name:ci.name,name_am:ci.name_am,price:Number(ci.price)||0,quantity:Number(ci.quantity)||0,
+        notes:'',subtotal:(Number(ci.price)||0)*(Number(ci.quantity)||0)
+      }));
+
+      /* The order, all its items, and history are independent database writes.
+         Send them concurrently instead of waiting for every item one-by-one. */
+      await Promise.all([
+        dbPut('orders',order),
+        ...itemRows.map(row=>dbPut('orderItems',row)),
+        dbPut('orderStatusHistory',{
+          id:uid(),order_id:orderId,status:'pending_waiter',
+          changed_by:'online_customer',created_at:now()
+        })
+      ]);
+
+      /* Notification is useful but must not delay confirmation to the customer. */
+      Promise.resolve()
+        .then(()=>addNotification(
+          'waiter','New Online Customer Order',
+          `Ticket ${ticket} • ${name} placed ${orderNumber} online and is waiting for a waiter.`
+        ))
+        .catch(e=>console.warn('Online-order notification delayed:',e));
+
+      try{
+        sessionStorage.setItem('hawassa_customer_last_order',
+          JSON.stringify({id:orderId,ticket:String(ticket),order_number:orderNumber}));
+      }catch(e){}
+
+      customerPublicCart=[];
+      customerPublicSave();
+      customerPublicDrawCart();
+
       const success=document.getElementById('customer-public-success');
-      if(success)success.innerHTML=`<div class="customer-public-success online-success-modern"><div class="success-check">✓</div><div class="success-title">ORDER RECEIVED</div><div class="customer-public-ticket">${esc(ticket)}</div><div class="success-ticket-label">Your ticket number</div><div class="success-live-status"><span class="live-pulse"></span><b>WAITING FOR WAITER</b><small>Your order was sent to the restaurant waiter.</small></div><div class="success-order-ref">Order ${esc(orderNumber)}</div></div>`;
+      if(success)success.innerHTML=
+        `<div class="customer-public-success online-success-modern">
+          <div class="success-check">✓</div>
+          <div class="success-title">ORDER RECEIVED</div>
+          <div class="customer-public-ticket">${esc(ticket)}</div>
+          <div class="success-ticket-label">Your ticket number</div>
+          <div class="success-live-status"><span class="live-pulse"></span>
+            <b>WAITING FOR WAITER</b>
+            <small>Your order was sent to the restaurant waiter.</small>
+          </div>
+          <div class="success-order-ref">Order ${esc(orderNumber)}</div>
+        </div>`;
+
       try{startCustomerOrderStatus(orderId);}catch(e){}
       toast(`Order ${orderNumber} sent to waiter`,'success');
-    }catch(e){console.error('Reliable customer order failed',e);toast(String(e?.message||'Order could not be sent. Please try again.'),'error');}
-    finally{if(btn){btn.disabled=false;btn.textContent=customerDisplaySettings?.place_order||'📤 Place Online Order';}}
+    }catch(e){
+      console.error('Fast customer order failed',e);
+      toast(String(e?.message||'Order could not be sent. Please try again.'),'error');
+    }finally{
+      if(btn)btn.disabled=false;
+      if(btn)btn.textContent=customerDisplaySettings?.place_order||'📤 Place Online Order';
+    }
   }
   window.submitCustomerOnlineOrder = reliableCustomerPlaceOrder;
 

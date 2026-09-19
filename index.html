@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
+   <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" href="./icons/icon-32.png" type="image/png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hawassa Ethiopian Restaurant ERP</title>
@@ -2589,7 +2592,13 @@ for delete to anon using (true);
 
 </head>
 <body>
-
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
 <div id="customer-public-root" style="display:block;min-height:100vh"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:30px;background:#f7f4ec;color:#24352a;font-family:Arial,sans-serif"><div style="max-width:620px;text-align:center;background:#fff;padding:34px;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.12)"><div style="font-size:42px">🍽️</div><h1 style="margin:10px 0 6px">hawassarestoranrt</h1><p style="margin:0;color:#64748b">Loading customer menu…</p></div></div></div>
 
 <!-- LOGIN -->

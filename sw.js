@@ -1,11 +1,12 @@
-const CACHE = 'hawassa-restaurant-v2';
+const CACHE = 'hawassa-restaurant-v3';
 const CORE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icon-32.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -31,8 +32,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-
-  // Never interfere with Supabase/API requests.
   if (url.pathname.includes('/rest/') || url.hostname.includes('supabase')) return;
 
   event.respondWith(
@@ -44,6 +43,8 @@ self.addEventListener('fetch', event => {
         }
         return response;
       })
-      .catch(() => caches.match(request).then(cached => cached || caches.match('./index.html')))
+      .catch(() =>
+        caches.match(request).then(cached => cached || caches.match('./index.html'))
+      )
   );
 });

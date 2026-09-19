@@ -2587,14 +2587,18 @@ for delete to anon using (true);
 }
 </style>
 
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0F766E">
+  <link rel="icon" href="./icons/icon-32.png" type="image/png">
 
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#8b0000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Hawassa Restaurant">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="./icon-32.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
 </head>
 <body>
 
@@ -4593,18 +4597,13 @@ function customerPublicPrintWaitingTicket(ticket,type,orderNumber,name){
   const title=type==='dine_in'?'DINE-IN':type==='delivery'?'DELIVERY':'TAKEAWAY';
   const w=window.open('','_blank','width=360,height=520'); if(!w)return;
   w.document.write(`<html><head><title>Waiting Ticket ${esc(ticket)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:18px}.n{font-size:180px;font-weight:1000;line-height:.8;margin:18px 0}.r{font-weight:900;letter-spacing:1px}.s{font-size:11px;color:#666;margin-top:8px}</style></head><body><div class="n">${esc(ticket)}</div><div class="r">${esc(customerPublicRestaurantName)}</div><hr><div class="r">CUSTOMER WAITING TICKET</div><div style="font-size:20px;font-weight:1000;margin:10px">${title}</div><div>Order ${esc(orderNumber)}</div><div style="font-size:11px;margin-top:6px">${esc(name)}</div><div class="s">Thank you. Please wait a few minutes.</div>
-
-<script id="hawassa-pwa-runtime">
-(function () {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./sw.js', {scope: './'})
-        .catch(function (err) { console.warn('PWA service worker registration failed:', err); });
-    });
-  }
-})();
-</script>
-
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    }
+  <\/script>
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),250);
 }
@@ -14576,6 +14575,18 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(install,250);
 })();
 </script>
+
+<script id="hawassa-pwa-runtime">
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .catch(function (err) {
+        console.warn('PWA service worker registration failed:', err);
+      });
+  });
+}
+</script>
+
 </body>
 
 <!-- TARGETED ORDER BUTTON RELIABILITY FIX: only order submission/approval flow -->

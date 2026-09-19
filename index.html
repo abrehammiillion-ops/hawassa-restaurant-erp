@@ -4636,53 +4636,7 @@ function customerPublicPrintWaitingTicket(ticket,type,orderNumber,name){
   const title=type==='dine_in'?'DINE-IN':type==='delivery'?'DELIVERY':'TAKEAWAY';
   const w=window.open('','_blank','width=360,height=520'); if(!w)return;
   w.document.write(`<html><head><title>Waiting Ticket ${esc(ticket)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:18px}.n{font-size:180px;font-weight:1000;line-height:.8;margin:18px 0}.r{font-weight:900;letter-spacing:1px}.s{font-size:11px;color:#666;margin-top:8px}</style></head><body><div class="n">${esc(ticket)}</div><div class="r">${esc(customerPublicRestaurantName)}</div><hr><div class="r">CUSTOMER WAITING TICKET</div><div style="font-size:20px;font-weight:1000;margin:10px">${title}</div><div>Order ${esc(orderNumber)}</div><div style="font-size:11px;margin-top:6px">${esc(name)}</div><div class="s">Thank you. Please wait a few minutes.</div>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function () {});
-      });
-    }
-  </script>
-<script id="pwa-runtime">
-(function(){
-  'use strict';
-  var deferredPrompt=null;
-  function makeInstallButton(){
-    if(document.getElementById('pwa-install-btn')) return;
-    var b=document.createElement('button');
-    b.id='pwa-install-btn'; b.className='topbar-btn'; b.type='button';
-    b.title='Install Hawassa Restaurant'; b.setAttribute('aria-label','Install app'); b.textContent='📲';
-    b.style.display='none'; b.addEventListener('click',async function(){
-      if(!deferredPrompt) return;
-      deferredPrompt.prompt();
-      try{ await deferredPrompt.userChoice; }catch(e){}
-      deferredPrompt=null; b.style.display='none';
-    });
-    var right=document.querySelector('.topbar-right');
-    if(right) right.insertBefore(b,right.firstChild);
-  }
-  function showInstall(){var b=document.getElementById('pwa-install-btn'); if(b) b.style.display='inline-flex';}
-  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault(); deferredPrompt=e; makeInstallButton(); showInstall();});
-  window.addEventListener('appinstalled',function(){deferredPrompt=null; var b=document.getElementById('pwa-install-btn'); if(b)b.style.display='none';});
-  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(function(err){console.warn('PWA service worker:',err);});});}
-  document.addEventListener('click',function(e){
-    var toggle=e.target.closest && e.target.closest('.topbar-toggle');
-    if(toggle){
-      var sb=document.getElementById('sidebar'); if(sb){sb.classList.toggle('mobile-open'); ensureBackdrop();}
-    }
-    var nav=e.target.closest && e.target.closest('#sidebar .nav-item');
-    if(nav && window.matchMedia('(max-width:900px)').matches){var sb2=document.getElementById('sidebar'); if(sb2) sb2.classList.remove('mobile-open'); var bd=document.querySelector('.mobile-sidebar-backdrop'); if(bd)bd.remove();}
-  },true);
-  function ensureBackdrop(){
-    var sb=document.getElementById('sidebar'); if(!sb || !sb.classList.contains('mobile-open')){var old=document.querySelector('.mobile-sidebar-backdrop');if(old)old.remove();return;}
-    if(document.querySelector('.mobile-sidebar-backdrop'))return;
-    var d=document.createElement('div'); d.className='mobile-sidebar-backdrop';
-    d.style.cssText='display:block;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:90;';
-    d.addEventListener('click',function(){sb.classList.remove('mobile-open');d.remove();}); document.body.appendChild(d);
-  }
-  makeInstallButton();
-})();
-</script>
+
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),250);
 }
@@ -14654,6 +14608,48 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(install,250);
 })();
 </script>
+
+<script id="pwa-runtime">
+(function(){
+  'use strict';
+  var deferredPrompt=null;
+  function makeInstallButton(){
+    if(document.getElementById('pwa-install-btn')) return;
+    var b=document.createElement('button');
+    b.id='pwa-install-btn'; b.className='topbar-btn'; b.type='button';
+    b.title='Install Hawassa Restaurant'; b.setAttribute('aria-label','Install app'); b.textContent='📲';
+    b.style.display='none'; b.addEventListener('click',async function(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch(e){}
+      deferredPrompt=null; b.style.display='none';
+    });
+    var right=document.querySelector('.topbar-right');
+    if(right) right.insertBefore(b,right.firstChild);
+  }
+  function showInstall(){var b=document.getElementById('pwa-install-btn'); if(b) b.style.display='inline-flex';}
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault(); deferredPrompt=e; makeInstallButton(); showInstall();});
+  window.addEventListener('appinstalled',function(){deferredPrompt=null; var b=document.getElementById('pwa-install-btn'); if(b)b.style.display='none';});
+  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(function(err){console.warn('PWA service worker:',err);});});}
+  document.addEventListener('click',function(e){
+    var toggle=e.target.closest && e.target.closest('.topbar-toggle');
+    if(toggle){
+      var sb=document.getElementById('sidebar'); if(sb){sb.classList.toggle('mobile-open'); ensureBackdrop();}
+    }
+    var nav=e.target.closest && e.target.closest('#sidebar .nav-item');
+    if(nav && window.matchMedia('(max-width:900px)').matches){var sb2=document.getElementById('sidebar'); if(sb2) sb2.classList.remove('mobile-open'); var bd=document.querySelector('.mobile-sidebar-backdrop'); if(bd)bd.remove();}
+  },true);
+  function ensureBackdrop(){
+    var sb=document.getElementById('sidebar'); if(!sb || !sb.classList.contains('mobile-open')){var old=document.querySelector('.mobile-sidebar-backdrop');if(old)old.remove();return;}
+    if(document.querySelector('.mobile-sidebar-backdrop'))return;
+    var d=document.createElement('div'); d.className='mobile-sidebar-backdrop';
+    d.style.cssText='display:block;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:90;';
+    d.addEventListener('click',function(){sb.classList.remove('mobile-open');d.remove();}); document.body.appendChild(d);
+  }
+  makeInstallButton();
+})();
+</script>
+<script id="hawassa-sw-register">(function(){if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){});});}})();</script>
 </body>
 
 <!-- TARGETED ORDER BUTTON RELIABILITY FIX: only order submission/approval flow -->

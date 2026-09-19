@@ -1,0 +1,9 @@
+{
+  "name": "Hawassa Ethiopian Restaurant",
+  "short_name": "Hawassa Restaurant",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8b0000",
+  "description": "Hawassa Ethiopian Restaurant ERP and POS"
+}

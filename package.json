@@ -1,0 +1,32 @@
+{
+  "name": "hawassa-ethiopian-restaurant",
+  "version": "1.0.0",
+  "description": "Hawassa Ethiopian Restaurant ERP/POS desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^38.1.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.hawassa.restaurant",
+    "productName": "Hawassa Ethiopian Restaurant",
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

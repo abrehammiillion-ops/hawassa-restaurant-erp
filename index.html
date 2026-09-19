@@ -2587,6 +2587,57 @@ for delete to anon using (true);
 }
 </style>
 
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#078930">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hawassa Restaurant">
+  <meta name="application-name" content="Hawassa Restaurant">
+  <meta name="msapplication-TileColor" content="#078930">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" href="./icons/icon-32.png" type="image/png">
+  <style id="pwa-responsive-final">
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    button, input, select, textarea { touch-action: manipulation; }
+    button, .btn, .nav-item, .pos-item, .table-card, .tab { min-height: 42px; }
+    @media (max-width: 900px) {
+      #sidebar { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-105%); width: min(86vw, 320px); box-shadow: 10px 0 30px rgba(0,0,0,.18); }
+      #sidebar.mobile-open { transform: translateX(0); }
+      .topbar-toggle { display: inline-flex !important; align-items:center; justify-content:center; width:42px; height:42px; }
+      #content { padding: 12px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+      .topbar-search { display:none; }
+      .topbar-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .topbar-right { gap:4px; }
+      #user-name-short { display:none; }
+      .mobile-sidebar-backdrop { display:block !important; }
+    }
+    @media (max-width: 600px) {
+      #topbar { padding: 0 8px; gap: 6px; }
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; }
+      .metric-card { padding: 12px 8px; }
+      .metric-value, .mc-value { font-size: 1.15rem; }
+      .panel-body { padding: 12px; }
+      .panel-header { padding: 10px 12px; }
+      .modal-overlay { padding: 8px; }
+      .modal { max-height: 92dvh; border-radius: 14px; }
+      .modal-footer { flex-wrap:wrap; }
+      .modal-footer .btn { flex:1 1 140px; }
+      .table-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; }
+      .table-card { min-height:90px; padding:12px 8px; }
+      .pos-layout { gap:8px !important; }
+      .pos-menu-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap:7px !important; }
+      .pos-item { padding:10px 7px; }
+      .pos-cart { min-height: 55dvh; }
+      .btn { min-height: 42px; }
+      .btn-sm, .btn-xs { min-height: 38px; }
+      table { min-width: 620px; }
+    }
+    @media (display-mode: standalone), (display-mode: fullscreen) {
+      #topbar { padding-top: max(0px, env(safe-area-inset-top)); height: calc(var(--topbar-h) + env(safe-area-inset-top)); }
+    }
+  </style>
 </head>
 <body>
 
@@ -4585,6 +4636,53 @@ function customerPublicPrintWaitingTicket(ticket,type,orderNumber,name){
   const title=type==='dine_in'?'DINE-IN':type==='delivery'?'DELIVERY':'TAKEAWAY';
   const w=window.open('','_blank','width=360,height=520'); if(!w)return;
   w.document.write(`<html><head><title>Waiting Ticket ${esc(ticket)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:18px}.n{font-size:180px;font-weight:1000;line-height:.8;margin:18px 0}.r{font-weight:900;letter-spacing:1px}.s{font-size:11px;color:#666;margin-top:8px}</style></head><body><div class="n">${esc(ticket)}</div><div class="r">${esc(customerPublicRestaurantName)}</div><hr><div class="r">CUSTOMER WAITING TICKET</div><div style="font-size:20px;font-weight:1000;margin:10px">${title}</div><div>Order ${esc(orderNumber)}</div><div style="font-size:11px;margin-top:6px">${esc(name)}</div><div class="s">Thank you. Please wait a few minutes.</div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    }
+  </script>
+<script id="pwa-runtime">
+(function(){
+  'use strict';
+  var deferredPrompt=null;
+  function makeInstallButton(){
+    if(document.getElementById('pwa-install-btn')) return;
+    var b=document.createElement('button');
+    b.id='pwa-install-btn'; b.className='topbar-btn'; b.type='button';
+    b.title='Install Hawassa Restaurant'; b.setAttribute('aria-label','Install app'); b.textContent='📲';
+    b.style.display='none'; b.addEventListener('click',async function(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch(e){}
+      deferredPrompt=null; b.style.display='none';
+    });
+    var right=document.querySelector('.topbar-right');
+    if(right) right.insertBefore(b,right.firstChild);
+  }
+  function showInstall(){var b=document.getElementById('pwa-install-btn'); if(b) b.style.display='inline-flex';}
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault(); deferredPrompt=e; makeInstallButton(); showInstall();});
+  window.addEventListener('appinstalled',function(){deferredPrompt=null; var b=document.getElementById('pwa-install-btn'); if(b)b.style.display='none';});
+  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(function(err){console.warn('PWA service worker:',err);});});}
+  document.addEventListener('click',function(e){
+    var toggle=e.target.closest && e.target.closest('.topbar-toggle');
+    if(toggle){
+      var sb=document.getElementById('sidebar'); if(sb){sb.classList.toggle('mobile-open'); ensureBackdrop();}
+    }
+    var nav=e.target.closest && e.target.closest('#sidebar .nav-item');
+    if(nav && window.matchMedia('(max-width:900px)').matches){var sb2=document.getElementById('sidebar'); if(sb2) sb2.classList.remove('mobile-open'); var bd=document.querySelector('.mobile-sidebar-backdrop'); if(bd)bd.remove();}
+  },true);
+  function ensureBackdrop(){
+    var sb=document.getElementById('sidebar'); if(!sb || !sb.classList.contains('mobile-open')){var old=document.querySelector('.mobile-sidebar-backdrop');if(old)old.remove();return;}
+    if(document.querySelector('.mobile-sidebar-backdrop'))return;
+    var d=document.createElement('div'); d.className='mobile-sidebar-backdrop';
+    d.style.cssText='display:block;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:90;';
+    d.addEventListener('click',function(){sb.classList.remove('mobile-open');d.remove();}); document.body.appendChild(d);
+  }
+  makeInstallButton();
+})();
+</script>
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),250);
 }

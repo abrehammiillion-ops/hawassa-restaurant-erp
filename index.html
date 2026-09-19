@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hawassa Ethiopian Restaurant ERP</title>
+<title>hawassarestoranrt | Ethiopian Restaurant</title>
 <style>
 /* ============================================================
    HAWASSA ETHIOPIAN RESTAURANT ERP - COMPLETE STYLES
@@ -2587,6 +2587,34 @@ for delete to anon using (true);
 }
 </style>
 
+
+<!-- hawassarestoranrt PWA + SEO -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F766E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="hawassarestoranrt">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<meta name="description" content="hawassarestoranrt — Ethiopian restaurant ordering, POS, waiter, kitchen, inventory and restaurant management system in Hawassa, Ethiopia.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://hawassa-restaurant-erp.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="hawassarestoranrt | Ethiopian Restaurant">
+<meta property="og:description" content="Order Ethiopian food and drinks from hawassarestoranrt in Hawassa, Ethiopia.">
+<meta property="og:url" content="https://hawassa-restaurant-erp.vercel.app/">
+<meta property="og:image" content="https://hawassa-restaurant-erp.vercel.app/icons/icon-512.png">
+<script type="application/ld+json">{
+  "@context":"https://schema.org",
+  "@type":"Restaurant",
+  "name":"hawassarestoranrt",
+  "url":"https://hawassa-restaurant-erp.vercel.app/",
+  "image":"https://hawassa-restaurant-erp.vercel.app/icons/icon-512.png",
+  "servesCuisine":"Ethiopian",
+  "address":{"@type":"PostalAddress","addressLocality":"Hawassa","addressCountry":"ET"}
+}</script>
+
 </head>
 <body>
 
@@ -4523,6 +4551,17 @@ function customerPublicPrintWaitingTicket(ticket,type,orderNumber,name){
   const title=type==='dine_in'?'DINE-IN':type==='delivery'?'DELIVERY':'TAKEAWAY';
   const w=window.open('','_blank','width=360,height=520'); if(!w)return;
   w.document.write(`<html><head><title>Waiting Ticket ${esc(ticket)}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:18px}.n{font-size:180px;font-weight:1000;line-height:.8;margin:18px 0}.r{font-weight:900;letter-spacing:1px}.s{font-size:11px;color:#666;margin-top:8px}</style></head><body><div class="n">${esc(ticket)}</div><div class="r">${esc(customerPublicRestaurantName)}</div><hr><div class="r">CUSTOMER WAITING TICKET</div><div style="font-size:20px;font-weight:1000;margin:10px">${title}</div><div>Order ${esc(orderNumber)}</div><div style="font-size:11px;margin-top:6px">${esc(name)}</div><div class="s">Thank you. Please wait a few minutes.</div>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('PWA service worker registration skipped:', err);
+      });
+    });
+  }
+</script>
+
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),250);
 }
